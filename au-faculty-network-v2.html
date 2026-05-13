@@ -1,0 +1,1869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AU Faculty Research Hub v2 — with Grant Data</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&display=swap" rel="stylesheet">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+/* ============================================================
+   ART DIRECTION: Academic research tool → precise, authoritative, warm
+   Palette: AU red accent (#84001E) on warm neutrals
+   Typography: DM Sans — clean, professional, legible at small sizes
+   Density: dense (data-heavy dashboard)
+   ============================================================ */
+
+:root, [data-theme="light"] {
+  --color-bg:             #f6f4f1;
+  --color-surface:        #f9f8f6;
+  --color-surface-2:      #fdfcfb;
+  --color-surface-offset: #f0ede9;
+  --color-surface-dynamic:#e8e4de;
+  --color-divider:        #dbd8d2;
+  --color-border:         #cec9c2;
+  --color-text:           #1e1b16;
+  --color-text-muted:     #6b6760;
+  --color-text-faint:     #b0ada8;
+  --color-text-inverse:   #f9f8f6;
+  --color-primary:        #84001E;
+  --color-primary-hover:  #6a0018;
+  --color-primary-active: #500012;
+  --color-primary-highlight: #f0dde1;
+  --color-success:        #3a7a22;
+  --color-gold:           #b07a00;
+  --color-blue:           #005a8e;
+  --color-purple:         #6a2faa;
+  --color-teal:           #017070;
+  --color-orange:         #b85c00;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px oklch(0.2 0.01 50 / 0.06);
+  --shadow-md: 0 4px 12px oklch(0.2 0.01 50 / 0.09);
+  --shadow-lg: 0 12px 32px oklch(0.2 0.01 50 / 0.13);
+  --transition: 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  --font-body: 'DM Sans', 'Helvetica Neue', sans-serif;
+  --text-xs:   clamp(0.75rem,  0.7rem  + 0.25vw, 0.8125rem);
+  --text-sm:   clamp(0.8125rem,0.78rem + 0.2vw,  0.875rem);
+  --text-base: clamp(0.875rem, 0.85rem + 0.2vw,  0.9375rem);
+  --text-lg:   clamp(1rem,     0.95rem + 0.35vw, 1.125rem);
+  --text-xl:   clamp(1.125rem, 1rem    + 0.75vw, 1.375rem);
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem;
+  --space-4: 1rem;    --space-5: 1.25rem;--space-6: 1.5rem;
+  --space-8: 2rem;    --space-10: 2.5rem;--space-12: 3rem;
+}
+[data-theme="dark"] {
+  --color-bg:             #141210;
+  --color-surface:        #1a1714;
+  --color-surface-2:      #1e1c19;
+  --color-surface-offset: #1c1a17;
+  --color-surface-dynamic:#2a2825;
+  --color-divider:        #242220;
+  --color-border:         #363330;
+  --color-text:           #ccc9c4;
+  --color-text-muted:     #766f67;
+  --color-text-faint:     #504c47;
+  --color-text-inverse:   #2a2724;
+  --color-primary:        #e05a7a;
+  --color-primary-hover:  #f07090;
+  --color-primary-active: #f890a8;
+  --color-primary-highlight: #3a1f24;
+  --color-success:        #5faa3f;
+  --color-gold:           #e8af34;
+  --color-blue:           #5591c7;
+  --color-purple:         #a86fdf;
+  --color-teal:           #4f98a3;
+  --color-orange:         #fdab43;
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.25);
+  --shadow-md: 0 4px 12px oklch(0 0 0 / 0.35);
+  --shadow-lg: 0 12px 32px oklch(0 0 0 / 0.45);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --color-bg: #141210; --color-surface: #1a1714; --color-surface-2: #1e1c19;
+    --color-surface-offset: #1c1a17; --color-surface-dynamic: #2a2825;
+    --color-divider: #242220; --color-border: #363330;
+    --color-text: #ccc9c4; --color-text-muted: #766f67; --color-text-faint: #504c47;
+    --color-text-inverse: #2a2724;
+    --color-primary: #e05a7a; --color-primary-hover: #f07090; --color-primary-active: #f890a8;
+    --color-primary-highlight: #3a1f24;
+    --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.25);
+    --shadow-md: 0 4px 12px oklch(0 0 0 / 0.35);
+    --shadow-lg: 0 12px 32px oklch(0 0 0 / 0.45);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; font-family: var(--font-body); font-size: var(--text-sm); color: var(--color-text); background: var(--color-bg); -webkit-font-smoothing: antialiased; }
+button { cursor: pointer; border: none; background: none; font: inherit; color: inherit; }
+input { font: inherit; color: inherit; }
+a { color: var(--color-primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+::selection { background: oklch(from var(--color-primary) l c h / 0.18); color: var(--color-text); }
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; border-radius: var(--radius-sm); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+
+/* ── App Shell ── */
+.app {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  grid-template-rows: 48px 1fr;
+  height: 100dvh;
+}
+
+/* ── Top Bar ── */
+.topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-4);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-divider);
+  z-index: 20;
+}
+.topbar-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+.topbar-logo svg { width: 28px; height: 28px; }
+.topbar-title {
+  font-size: var(--text-base);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.topbar-subtitle {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-left: var(--space-1);
+  display: none;
+}
+@media (min-width: 700px) { .topbar-subtitle { display: inline; } }
+.topbar-divider { width: 1px; height: 20px; background: var(--color-divider); flex-shrink: 0; }
+.topbar-search {
+  flex: 1;
+  max-width: 340px;
+  position: relative;
+}
+.topbar-search input {
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--space-3) 0 var(--space-8);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.topbar-search input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px oklch(from var(--color-primary) l c h / 0.12); }
+.topbar-search .search-icon {
+  position: absolute;
+  left: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-faint);
+  pointer-events: none;
+}
+.topbar-actions { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
+.btn-icon {
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  transition: background var(--transition), color var(--transition);
+}
+.btn-icon:hover { background: var(--color-surface-offset); color: var(--color-text); }
+.stat-pill {
+  display: flex; align-items: center; gap: var(--space-1);
+  padding: 0 var(--space-2);
+  height: 24px;
+  background: var(--color-surface-offset);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.stat-pill strong { color: var(--color-text); font-weight: 600; }
+
+/* ── Left Panel: Profiles Directory ── */
+.profiles-panel {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-divider);
+  overflow: hidden;
+}
+.panel-header {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.panel-header h2 {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.panel-tabs {
+  display: flex;
+  gap: 0;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+.panel-tab {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  border-radius: var(--radius-full);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  transition: background var(--transition), color var(--transition);
+}
+.panel-tab:hover { background: var(--color-surface-offset); color: var(--color-text); }
+.panel-tab.active { background: var(--color-primary-highlight); color: var(--color-primary); }
+.panel-tab.active:hover { background: var(--color-primary-highlight); }
+.profiles-list {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.profile-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+  cursor: pointer;
+  transition: background var(--transition);
+  position: relative;
+}
+.profile-card:hover { background: var(--color-surface-offset); }
+.profile-card.active { background: var(--color-primary-highlight); }
+.profile-avatar {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-full);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  flex-shrink: 0;
+  color: white;
+}
+.profile-info { flex: 1; min-width: 0; }
+.profile-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.profile-dept {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.profile-meta {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  flex-wrap: wrap;
+}
+.profile-badge {
+  font-size: 11px;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  background: var(--color-surface-offset);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+.profile-stat {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  display: flex; align-items: center; gap: 2px;
+}
+.profile-seeking {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+  border: 2px solid var(--color-surface);
+  title: "Open to collaboration";
+}
+/* skeleton */
+@keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+.skeleton {
+  background: linear-gradient(90deg, var(--color-surface-offset) 25%, var(--color-surface-dynamic) 50%, var(--color-surface-offset) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+.skel-card { padding: var(--space-3) var(--space-4); display:flex; gap:var(--space-3); border-bottom:1px solid var(--color-divider); }
+.skel-avatar { width:36px; height:36px; border-radius:50%; flex-shrink:0; }
+.skel-lines { flex:1; display:flex; flex-direction:column; gap:var(--space-2); padding-top:2px; }
+.skel-line { height:12px; }
+
+/* ── Right Panel: Network Map ── */
+.network-panel {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.network-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-divider);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.toolbar-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.filter-chips {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+.chip {
+  padding: 3px var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.chip:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.chip.active { background: var(--color-primary); border-color: var(--color-primary); color: white; }
+.toolbar-sep { width:1px; height:18px; background:var(--color-divider); flex-shrink:0; }
+.slider-group { display:flex; align-items:center; gap:var(--space-2); }
+.slider-group input[type=range] {
+  width: 80px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+.btn-reset {
+  padding: 4px var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  transition: all var(--transition);
+  margin-left: auto;
+}
+.btn-reset:hover { border-color: var(--color-text-muted); color: var(--color-text); }
+
+/* ── SVG Canvas ── */
+#network-svg {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+}
+#network-svg:active { cursor: grabbing; }
+
+/* ── Profile Detail Drawer ── */
+.detail-drawer {
+  position: absolute;
+  top: 0; right: 0;
+  width: 340px;
+  height: 100%;
+  background: var(--color-surface-2);
+  border-left: 1px solid var(--color-divider);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 10;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+.detail-drawer.open { transform: translateX(0); }
+.drawer-header {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+.drawer-avatar {
+  width: 48px; height: 48px;
+  border-radius: var(--radius-full);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700;
+  font-size: var(--text-lg);
+  color: white;
+  flex-shrink: 0;
+}
+.drawer-name-block { flex: 1; min-width: 0; }
+.drawer-name { font-size: var(--text-lg); font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+.drawer-dept { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 2px; }
+.drawer-school-badge {
+  display: inline-block;
+  margin-top: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+}
+.btn-close-drawer {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  transition: background var(--transition);
+}
+.btn-close-drawer:hover { background: var(--color-surface-offset); color: var(--color-text); }
+.drawer-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  background: var(--color-divider);
+  flex-shrink: 0;
+}
+.drawer-stat {
+  padding: var(--space-3);
+  background: var(--color-surface-2);
+  text-align: center;
+}
+.drawer-stat-value {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.drawer-stat-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: 1px;
+}
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-4);
+}
+.drawer-section-title {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+  margin-top: var(--space-4);
+}
+.drawer-section-title:first-child { margin-top: 0; }
+.topic-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-bottom: var(--space-2); }
+.topic-chip {
+  padding: 3px var(--space-2);
+  font-size: 11px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-offset);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+.pub-item {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-divider);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+.pub-item:last-child { border-bottom: none; }
+.pub-title { color: var(--color-text); font-weight: 500; }
+.pub-meta { color: var(--color-text-muted); margin-top: 2px; }
+.collab-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition);
+  text-decoration: none;
+  color: inherit;
+}
+.collab-item:hover { background: var(--color-surface-offset); }
+.collab-avatar {
+  width: 28px; height: 28px;
+  border-radius: var(--radius-full);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: white;
+  flex-shrink: 0;
+}
+.collab-name { font-size: var(--text-xs); font-weight: 600; }
+.collab-shared { font-size: 11px; color: var(--color-text-muted); }
+.drawer-openalex-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-divider);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: background var(--transition);
+}
+.drawer-openalex-link:hover { background: var(--color-surface-offset); color: var(--color-text); text-decoration: none; }
+
+/* ── Loading overlay ── */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  z-index: 30;
+  gap: var(--space-4);
+  transition: opacity 400ms ease;
+}
+.loading-overlay.hidden { opacity: 0; pointer-events: none; }
+.loading-spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--color-divider);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: var(--text-sm); color: var(--color-text-muted); font-weight: 500; }
+.loading-sub { font-size: var(--text-xs); color: var(--color-text-faint); }
+
+/* ── Empty / Error states ── */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: var(--space-10); text-align: center;
+  color: var(--color-text-muted); height: 200px;
+}
+.empty-state svg { color: var(--color-text-faint); margin-bottom: var(--space-3); }
+.empty-state p { font-size: var(--text-xs); max-width: 22ch; }
+
+/* ── D3 network styles ── */
+.node circle { stroke-width: 1.5; cursor: pointer; transition: opacity 200ms; }
+.node circle:hover { stroke-width: 2.5; }
+.node text { pointer-events: none; font-family: var(--font-body); }
+.node-label { opacity: 0; transition: opacity 200ms; }
+.link { stroke-opacity: 0.3; transition: stroke-opacity 200ms; cursor: pointer; }
+.link.highlighted { stroke-opacity: 0.85; }
+.grant-link { stroke-opacity: 0.6; transition: stroke-opacity 200ms; cursor: pointer; }
+.grant-link.highlighted { stroke-opacity: 1; }
+.grant-link.dimmed { stroke-opacity: 0.04; }
+.node.dimmed circle { opacity: 0.15; }
+.node.dimmed text { opacity: 0.08; }
+.link.dimmed { stroke-opacity: 0.04; }
+
+/* ── Grant cards in drawer ── */
+.grant-item { padding: var(--space-2) 0; border-bottom: 1px solid var(--color-divider); }
+.grant-item:last-child { border-bottom: none; }
+.grant-header { display: flex; align-items: flex-start; gap: var(--space-2); margin-bottom: 3px; }
+.grant-agency {
+  font-size: 10px; font-weight: 700; padding: 1px 6px;
+  border-radius: var(--radius-full); flex-shrink: 0;
+  letter-spacing: 0.04em; color: white;
+}
+.grant-agency.NIH  { background: #2563a8; }
+.grant-agency.NSF  { background: #1a6b3a; }
+.grant-agency.FED  { background: #7c3aed; }
+.grant-title { font-size: var(--text-xs); font-weight: 500; color: var(--color-text); line-height: 1.4; }
+.grant-meta  { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+
+/* ── Legend + source toggles in toolbar ── */
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: var(--text-xs); color: var(--color-text-muted); white-space: nowrap; }
+.legend-line { width: 18px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+.source-toggle {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px var(--space-3); font-size: var(--text-xs); font-weight: 500;
+  border-radius: var(--radius-full); border: 1px solid var(--color-border);
+  background: var(--color-surface-2); color: var(--color-text-muted);
+  cursor: pointer; transition: all var(--transition);
+}
+.source-toggle .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.source-toggle.pub.active  { border-color: var(--color-primary); color: var(--color-primary); }
+.source-toggle.grant.active { border-color: var(--color-gold);    color: var(--color-gold); }
+
+/* ── View filter chips (All / Publications / Grants) ── */
+.view-chip { padding: 3px var(--space-3); font-size: var(--text-xs); font-weight: 500; border-radius: var(--radius-full); border: 1px solid var(--color-border); background: var(--color-surface-2); color: var(--color-text-muted); cursor: pointer; transition: all var(--transition); white-space: nowrap; }
+.view-chip:hover { border-color: var(--color-text-muted); color: var(--color-text); }
+.view-chip.active[data-view="all"]          { background: var(--color-text); border-color: var(--color-text); color: var(--color-surface); }
+.view-chip.active[data-view="publications"] { background: var(--color-primary); border-color: var(--color-primary); color: white; }
+.view-chip.active[data-view="grants"]       { background: var(--color-gold); border-color: var(--color-gold); color: white; }
+
+/* ── Grant-only stub nodes in profile list ── */
+.profile-card.grant-only { border-left: 3px solid var(--color-gold); }
+.grant-only-badge { font-size: 10px; padding: 1px 6px; border-radius: var(--radius-full); border: 1px solid var(--color-gold); color: var(--color-gold); background: color-mix(in srgb, var(--color-gold) 8%, transparent); font-weight: 600; }
+
+/* ── Tooltip ── */
+.net-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  box-shadow: var(--shadow-md);
+  max-width: 200px;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.net-tooltip.visible { opacity: 1; }
+.net-tooltip strong { display: block; font-weight: 600; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- TOP BAR -->
+  <header class="topbar" role="banner">
+    <div class="topbar-logo" aria-label="AU Faculty Research Hub">
+      <svg viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <rect x="2" y="2" width="24" height="24" rx="5" fill="var(--color-primary)"/>
+        <circle cx="10" cy="14" r="3" fill="white"/>
+        <circle cx="20" cy="9" r="2.5" fill="white" opacity="0.85"/>
+        <circle cx="20" cy="19" r="2.5" fill="white" opacity="0.85"/>
+        <line x1="13" y1="14" x2="17.5" y2="10.3" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="13" y1="14" x2="17.5" y2="17.7" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="topbar-title">AU Research Hub</span>
+    <span class="topbar-subtitle">— Faculty Research Network</span>
+    <div class="topbar-divider"></div>
+    <div class="topbar-search">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="search" id="global-search" placeholder="Search faculty, topics, schools…" aria-label="Search faculty">
+    </div>
+    <div class="topbar-actions">
+      <div class="stat-pill" id="stat-faculty"><strong id="stat-count">—</strong>&nbsp;faculty</div>
+      <div class="stat-pill" id="stat-connections" style="display:none"><strong id="conn-count">—</strong>&nbsp;connections</div>
+      <div class="stat-pill" id="stat-grants" style="display:none"><strong id="grant-count">—</strong>&nbsp;grants</div>
+      <button class="btn-icon" id="theme-toggle" data-theme-toggle aria-label="Toggle dark mode">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- PROFILES PANEL (left) -->
+  <aside class="profiles-panel" aria-label="Faculty directory">
+    <div class="panel-header">
+      <h2>Faculty Profiles</h2>
+      <span id="filtered-count" style="font-size:var(--text-xs);color:var(--color-text-muted)"></span>
+    </div>
+    <nav class="panel-tabs" role="tablist" aria-label="Filter by school">
+      <button class="panel-tab active" role="tab" data-school="ALL" aria-selected="true">All</button>
+      <button class="panel-tab" role="tab" data-school="CAS">CAS</button>
+      <button class="panel-tab" role="tab" data-school="SPA">SPA</button>
+      <button class="panel-tab" role="tab" data-school="SIS">SIS</button>
+      <button class="panel-tab" role="tab" data-school="WCL">WCL</button>
+      <button class="panel-tab" role="tab" data-school="SOC">SOC</button>
+      <button class="panel-tab" role="tab" data-school="Kogod">Kogod</button>
+      <button class="panel-tab" role="tab" data-school="SOE">SOE</button>
+    </nav>
+    <div class="profiles-list" id="profiles-list" role="list" aria-label="Faculty list">
+      <!-- skeleton placeholders -->
+      <div id="skeletons">
+        ${Array(8).fill('<div class="skel-card"><div class="skeleton skel-avatar"></div><div class="skel-lines"><div class="skeleton skel-line" style="width:65%"></div><div class="skeleton skel-line" style="width:45%"></div></div></div>').join('')}
+      </div>
+    </div>
+  </aside>
+
+  <!-- NETWORK PANEL (right) -->
+  <main class="network-panel" aria-label="Research collaboration network">
+    <div class="network-toolbar" role="toolbar" aria-label="Network controls">
+      <span class="toolbar-label">School:</span>
+      <div class="filter-chips" id="net-school-filters" role="group" aria-label="Filter by school">
+        <button class="chip active" data-school="ALL">All</button>
+        <button class="chip" data-school="CAS">CAS</button>
+        <button class="chip" data-school="SPA">SPA</button>
+        <button class="chip" data-school="SIS">SIS</button>
+        <button class="chip" data-school="WCL">WCL</button>
+        <button class="chip" data-school="SOC">SOC</button>
+        <button class="chip" data-school="Kogod">Kogod</button>
+        <button class="chip" data-school="SOE">SOE</button>
+      </div>
+      <div class="toolbar-sep"></div>
+      <div class="slider-group">
+        <span class="toolbar-label">Min. connections:</span>
+        <input type="range" id="strength-slider" min="1" max="5" value="1" aria-label="Minimum shared topics">
+        <span class="toolbar-label" id="strength-val">1</span>
+      </div>
+      <div class="toolbar-sep"></div>
+      <span class="toolbar-label">View:</span>
+      <button class="view-chip active" data-view="all" id="view-all">All</button>
+      <button class="view-chip" data-view="publications" id="view-publications">Publications</button>
+      <button class="view-chip" data-view="grants" id="view-grants">Grants</button>
+      <div class="toolbar-sep"></div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:var(--color-primary)"></div>
+        <span>Shared topics</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:var(--color-gold)"></div>
+        <span>Shared grants</span>
+      </div>
+      <div class="legend-item">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="6" stroke="var(--color-gold)" stroke-width="1.8"/>
+        </svg>
+        <span>Has grant</span>
+      </div>
+      <div class="legend-item">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="6" stroke="var(--color-gold)" stroke-width="1.5" stroke-dasharray="3,2"/>
+        </svg>
+        <span>Grant record only</span>
+      </div>
+      <button class="btn-reset" id="reset-view">Reset View</button>
+    </div>
+    <svg id="network-svg" aria-label="Faculty collaboration network graph">
+      <g id="svg-root"></g>
+    </svg>
+    <!-- Profile Detail Drawer -->
+    <aside class="detail-drawer" id="detail-drawer" aria-label="Faculty detail" aria-hidden="true">
+      <div class="drawer-header" id="drawer-header">
+        <div class="drawer-avatar" id="drawer-avatar"></div>
+        <div class="drawer-name-block">
+          <div class="drawer-name" id="drawer-name"></div>
+          <div class="drawer-dept" id="drawer-dept"></div>
+          <span class="drawer-school-badge" id="drawer-school-badge"></span>
+        </div>
+        <button class="btn-close-drawer" id="close-drawer" aria-label="Close detail panel">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="drawer-stats" id="drawer-stats"></div>
+      <div class="drawer-body" id="drawer-body"></div>
+      <a class="drawer-openalex-link" id="drawer-openalex-link" target="_blank" rel="noopener noreferrer">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        View full profile on OpenAlex
+      </a>
+    </aside>
+    <div class="net-tooltip" id="net-tooltip"></div>
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loading-overlay" aria-live="polite">
+      <div class="loading-spinner"></div>
+      <div class="loading-text" id="loading-text">Fetching AU faculty from OpenAlex…</div>
+      <div class="loading-sub" id="loading-sub">This takes a few seconds</div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ============================================================
+//  DATA & STATE
+// ============================================================
+const AU_INSTITUTION = 'I181401687';
+const API_BASE = 'https://api.openalex.org';
+const MAILTO = 'research@american.edu';
+
+const SCHOOL_COLORS = {
+  'CAS':          '#84001E',
+  'SPA':          '#005a8e',
+  'SIS':          '#017070',
+  'WCL':          '#3a7a22',
+  'SOC':          '#c2185b',
+  'Kogod':        '#6a2faa',
+  'SOE':          '#455a64',
+  'Other':        '#6b6760',
+  'Grant Record': '#9a6e00'   // grant-only stub nodes
+};
+
+// Topic keyword → school scoring (score each school, pick highest)
+const TOPIC_SCHOOL_MAP = [
+  { keywords: ['international relations','foreign policy','diplomacy','geopolitics','global governance','transnational','human security','development aid','asylum','refugee'], school: 'SIS', weight: 3 },
+  { keywords: ['international','global','foreign','conflict','war','peace','migration','multilateral'], school: 'SIS', weight: 1 },
+  { keywords: ['constitutional law','criminal law','litigation','legal theory','judicial','tort','contract law','international law','intellectual property law'], school: 'WCL', weight: 3 },
+  { keywords: ['law','legal','justice','court','constitutional','criminal','rights'], school: 'WCL', weight: 1 },
+  { keywords: ['public administration','public policy','government reform','nonprofit','regulatory','electoral system','congress','senate'], school: 'SPA', weight: 3 },
+  { keywords: ['public admin','governance','government','policy','politics','election','democracy','budget'], school: 'SPA', weight: 1 },
+  { keywords: ['journalism','broadcast','public relations','advertising','digital media','film studies','media literacy'], school: 'SOC', weight: 3 },
+  { keywords: ['communication','media','journalism','film'], school: 'SOC', weight: 1 },
+  { keywords: ['corporate finance','accounting','supply chain','consumer behavior','organizational behavior','entrepreneurship'], school: 'Kogod', weight: 3 },
+  { keywords: ['business','management','finance','marketing','economics','trade'], school: 'Kogod', weight: 1 },
+  { keywords: ['curriculum development','special education','higher education policy','teacher training','educational assessment'], school: 'SOE', weight: 3 },
+  { keywords: ['education','teaching','learning','pedagogy','student'], school: 'SOE', weight: 1 },
+];
+
+function inferSchool(author) {
+  const allTopicText = (author.topics || []).map(t => (t.display_name||'').toLowerCase()).join(' ');
+  const scores = {};
+  for (const { keywords, school, weight } of TOPIC_SCHOOL_MAP) {
+    const hits = keywords.filter(k => allTopicText.includes(k)).length;
+    if (hits > 0) scores[school] = (scores[school] || 0) + hits * weight;
+  }
+  if (Object.keys(scores).length === 0) return 'CAS';
+  return Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function getInitials(name) {
+  return name.split(' ').filter(Boolean).map(p => p[0]).slice(0,2).join('').toUpperCase();
+}
+
+const state = {
+  authors: [],
+  links: [],        // publication topic links
+  grantLinks: [],   // grant co-PI / shared-grant links
+  grants: [],       // all grants fetched
+  selectedSchool: 'ALL',  // single source of truth — drives both sidebar and network
+  minStrength: 1,
+  activeAuthorId: null,
+  searchQuery: '',
+  simulation: null,
+  zoom: null,
+  viewMode: 'all',       // 'all' | 'publications' | 'grants'
+  _hasAutoFit: false,
+};
+
+// ============================================================
+//  FETCH DATA
+// ============================================================
+async function fetchPage(page) {
+  const url = `${API_BASE}/authors?filter=last_known_institutions.id:${AU_INSTITUTION},works_count:>3&sort=cited_by_count:desc&per_page=100&page=${page}&select=id,display_name,works_count,cited_by_count,topics&mailto=${MAILTO}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('API error');
+  return res.json();
+}
+
+async function loadAllFaculty() {
+  setLoadingText('Fetching AU faculty from OpenAlex…', 'Loading page 1…');
+  const first = await fetchPage(1);
+  const total = first.meta.count;
+  const pages = Math.ceil(Math.min(total, 400) / 100);
+  let all = [...first.results];
+  for (let p = 2; p <= pages; p++) {
+    setLoadingText(`Loading faculty…`, `Page ${p} of ${pages} — ${all.length} loaded so far`);
+    const d = await fetchPage(p);
+    all = all.concat(d.results);
+  }
+  return all.slice(0, 400);
+}
+
+function setLoadingText(main, sub='') {
+  document.getElementById('loading-text').textContent = main;
+  document.getElementById('loading-sub').textContent = sub;
+}
+
+async function buildLinks(authors) {
+  const links = [];
+  const n = authors.length;
+  const CHUNK = 25; // yield to UI every 25 outer iterations
+  for (let i = 0; i < n; i++) {
+    const aTopics = new Set((authors[i].topics || []).map(t => t.id));
+    for (let j = i + 1; j < n; j++) {
+      const shared = (authors[j].topics || []).filter(t => aTopics.has(t.id));
+      if (shared.length >= 1) {
+        links.push({
+          source: authors[i].id,
+          target: authors[j].id,
+          strength: shared.length,
+          sharedTopics: shared.slice(0, 5).map(t => t.display_name)
+        });
+      }
+    }
+    // Yield to browser event loop periodically to prevent freeze
+    if (i > 0 && i % CHUNK === 0) {
+      const pct = Math.round((i / n) * 100);
+      setLoadingText('Building collaboration graph…', `Finding connections… ${pct}%`);
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+  return links;
+}
+
+// ============================================================
+//  GRANT DATA — Fetch + Match + Build Links
+// ============================================================
+
+// Normalize a name to [first, last] lowercase tokens for matching
+function normalizeName(name) {
+  return (name || '').toLowerCase().replace(/[^a-z\s\-]/g, '').trim().split(/\s+/).filter(Boolean);
+}
+
+// Match a PI name string to a faculty author object (fuzzy: last name + first initial)
+function matchPIToFaculty(piName, authors) {
+  const parts = normalizeName(piName);
+  if (parts.length < 2) return null;
+  const piLast  = parts[parts.length - 1];
+  const piFirst = parts[0][0];
+  return authors.find(a => {
+    const ap = normalizeName(a.display_name);
+    if (ap.length < 2) return false;
+    return ap[ap.length - 1] === piLast && ap[0][0] === piFirst;
+  }) || null;
+}
+
+// NIH Reporter API v2
+async function fetchNIHGrants() {
+  try {
+    const payload = {
+      criteria: {
+        org_names: ['AMERICAN UNIVERSITY'],
+        fiscal_years: [2019, 2020, 2021, 2022, 2023, 2024, 2025]
+      },
+      include_fields: ['ProjectNum','ProjectTitle','PrincipalInvestigators','FiscalYear','AwardAmount','AgencyCode','Terms'],
+      limit: 500, offset: 0
+    };
+    const res = await fetch('https://api.reporter.nih.gov/v2/projects/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('NIH API error');
+    const data = await res.json();
+    return (data.results || []).map(g => ({
+      // NIH Reporter v2 returns fields in the same casing as include_fields (PascalCase)
+      id: g.project_num || g.ProjectNum || String(Math.random()),
+      title: g.ProjectTitle || g.project_title || '',
+      pis: ((g.PrincipalInvestigators || g.principal_investigators) || [])
+            .map(pi => `${pi.first_name||pi.FirstName||''} ${pi.last_name||pi.LastName||''}`.trim())
+            .filter(Boolean),
+      year: g.FiscalYear || g.fiscal_year,
+      amount: g.AwardAmount || g.award_amount || 0,
+      agency: 'NIH',
+      terms: ((g.Terms || g.terms) || '').split(';').map(t => t.trim()).filter(Boolean).slice(0, 8)
+    }));
+  } catch(e) {
+    console.warn('NIH fetch failed:', e.message);
+    return [];
+  }
+}
+
+// NSF Award Search API
+async function fetchNSFGrants() {
+  try {
+    const params = new URLSearchParams({
+      institution: 'american university',
+      dateStart: '01/01/2019',
+      printFields: 'id,title,pdPIName,startDate,fundsObligatedAmt,abstractText',
+      offset: 1
+    });
+    const res = await fetch(`https://api.nsf.gov/services/v1/awards.json?${params}`);
+    if (!res.ok) throw new Error('NSF API error');
+    const data = await res.json();
+    return (data.response?.award || []).map(g => {
+      // NSF name format is often "Last, First" — normalize
+      let piName = g.pdPIName || '';
+      if (piName.includes(',')) {
+        const [last, first] = piName.split(',').map(s => s.trim());
+        piName = `${first} ${last}`;
+      }
+      return {
+        id: g.id || String(Math.random()),
+        title: g.title || '',
+        pis: piName ? [piName] : [],
+        year: g.startDate ? parseInt(g.startDate.slice(-4)) : null,
+        amount: parseInt(g.fundsObligatedAmt || 0),
+        agency: 'NSF',
+        terms: []
+      };
+    });
+  } catch(e) {
+    console.warn('NSF fetch failed:', e.message);
+    return [];
+  }
+}
+
+// USASpending.gov — returns grants by recipient (no PI names, so used for award totals)
+async function fetchUSASpendingGrants() {
+  try {
+    const payload = {
+      filters: {
+        recipient_search_text: ['American University'],
+        award_type_codes: ['02','03','04','05'],
+        time_period: [{ start_date: '2019-01-01', end_date: '2025-12-31' }]
+      },
+      fields: ['Award ID','Award Amount','Description','awarding_agency','Start Date','recipient_name'],
+      limit: 100, page: 1,
+      sort: 'Award Amount', order: 'desc'
+    };
+    const res = await fetch('https://api.usaspending.gov/api/v2/search/spending_by_award/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('USASpending API error');
+    const data = await res.json();
+    // USASpending summary doesn't include PI names — return grants with agency info only
+    return (data.results || []).map(g => ({
+      id: g['Award ID'] || String(Math.random()),
+      title: g['Description'] || 'Federal Grant',
+      pis: [], // no PI names in summary view
+      year: g['Start Date'] ? parseInt(g['Start Date'].slice(0,4)) : null,
+      amount: Math.round(g['Award Amount'] || 0),
+      agency: 'FED',
+      awardingAgency: (g['awarding_agency'] || 'Federal Agency'),
+      terms: []
+    }));
+  } catch(e) {
+    console.warn('USASpending fetch failed:', e.message);
+    return [];
+  }
+}
+
+// Build grant-based links between faculty who share a grant (co-PIs)
+// Step A: attach grants to already-known authors (for drawer display + gold ring)
+function attachGrantsToAuthors(authors, grants) {
+  grants.forEach(grant => {
+    grant.pis.forEach(pi => {
+      const matched = matchPIToFaculty(pi, authors);
+      if (matched) {
+        matched.grants = matched.grants || [];
+        if (!matched.grants.find(g => g.id === grant.id)) {
+          matched.grants.push(grant);
+        }
+        matched._hasGrant = true;
+      }
+    });
+  });
+}
+
+// Step B: create lightweight stub nodes for PIs not found in OpenAlex
+function buildGrantOnlyNodes(authors, grants) {
+  const existingIds = new Set(authors.map(a => a.id));
+  const stubs = new Map(); // key → stub author object
+
+  grants.forEach(grant => {
+    grant.pis.forEach(pi => {
+      const matched = matchPIToFaculty(pi, authors);
+      if (!matched) {
+        // Normalise the PI name into a stable key
+        const key = pi.trim().toLowerCase().replace(/\s+/g, '-');
+        if (!stubs.has(key)) {
+          const displayName = pi.trim()
+            .split(/\s+/)
+            .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+            .join(' ');
+          stubs.set(key, {
+            id: `grant-only-${key}`,
+            display_name: displayName,
+            school: 'Grant Record',
+            works_count: 0,
+            cited_by_count: 0,
+            topics: [],
+            grants: [],
+            _grantOnly: true,
+            _hasGrant: true
+          });
+        }
+        const stub = stubs.get(key);
+        if (!stub.grants.find(g => g.id === grant.id)) {
+          stub.grants.push(grant);
+        }
+      }
+    });
+  });
+
+  return Array.from(stubs.values());
+}
+
+// Step C: build gold edges between any two faculty (or stubs) on the same grant
+function buildGrantLinks(authors, grants) {
+  const links = [];
+  const seen = new Set();
+
+  grants.forEach(grant => {
+    const matched = grant.pis
+      .map(pi => {
+        // Try real authors first, then stubs (which are already in the authors array by now)
+        return matchPIToFaculty(pi, authors);
+      })
+      .filter(Boolean);
+
+    for (let i = 0; i < matched.length; i++) {
+      for (let j = i + 1; j < matched.length; j++) {
+        const key = [matched[i].id, matched[j].id].sort().join('||');
+        if (!seen.has(key)) {
+          seen.add(key);
+          links.push({
+            source: matched[i].id,
+            target: matched[j].id,
+            strength: 2,
+            type: 'grant',
+            agencies: [grant.agency],
+            grantTitles: [grant.title.slice(0, 80)]
+          });
+        } else {
+          const existing = links.find(l => [l.source, l.target].sort().join('||') === key);
+          if (existing) {
+            existing.strength++;
+            if (!existing.agencies.includes(grant.agency)) existing.agencies.push(grant.agency);
+            if (existing.grantTitles.length < 3) existing.grantTitles.push(grant.title.slice(0, 80));
+          }
+        }
+      }
+    }
+  });
+
+  return links;
+}
+
+// ============================================================
+//  PROFILES LIST
+// ============================================================
+function renderProfilesList() {
+  const list = document.getElementById('profiles-list');
+  const skeletons = document.getElementById('skeletons');
+  if (skeletons) skeletons.remove();
+
+  const q = state.searchQuery.toLowerCase();
+  let filtered = state.authors.filter(a => {
+    if (state.selectedSchool !== 'ALL' && a.school !== state.selectedSchool) return false;
+    // viewMode filtering mirrors what the network shows
+    if (state.viewMode === 'grants' && !a._hasGrant) return false;
+    if (state.viewMode === 'publications' && a._grantOnly) return false;
+    if (q) {
+      const topics = (a.topics||[]).map(t=>t.display_name||'').join(' ').toLowerCase();
+      const grantText = (a.grants||[]).map(g=>g.title+' '+g.agency).join(' ').toLowerCase();
+      return a.display_name.toLowerCase().includes(q) || topics.includes(q) || grantText.includes(q);
+    }
+    return true;
+  });
+
+  document.getElementById('filtered-count').textContent =
+    filtered.length === state.authors.length ? '' : `${filtered.length} shown`;
+
+  if (!filtered.length) {
+    const emptyMsg = state.viewMode === 'grants'
+      ? 'No grant records loaded yet — NIH/NSF data may still be fetching, or no AU grants were returned. Check the browser console (F12) for details.'
+      : 'No faculty match your search';
+    list.innerHTML = `<div class="empty-state"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><p>${emptyMsg}</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(a => {
+    const color = SCHOOL_COLORS[a.school] || SCHOOL_COLORS.Other;
+    const isGrantOnly = !!a._grantOnly;
+    const hasGrant = !!a._hasGrant;
+    const topTopics = (a.topics||[]).slice(0,2).map(t=>
+      `<span class="profile-badge">${t.display_name}</span>`).join('');
+    const grantBadge = isGrantOnly
+      ? `<span class="grant-only-badge">Grant Record</span>`
+      : hasGrant
+        ? `<span class="grant-only-badge" style="border-color:var(--color-gold);color:var(--color-gold);">🏛 Has Grant</span>`
+        : '';
+    const isActive = a.id === state.activeAuthorId;
+    const cardClass = `profile-card${isActive?' active':''}${isGrantOnly?' grant-only':''}`;
+    // Grant-only stubs show agency names instead of publication stats
+    const metaContent = isGrantOnly
+      ? `${grantBadge}<span class="profile-stat">${(a.grants||[]).length} grant${(a.grants||[]).length!==1?'s':''}</span>`
+      : `${topTopics}${grantBadge}
+          <span class="profile-stat">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            ${a.works_count}
+          </span>
+          <span class="profile-stat">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            ${(a.cited_by_count||0).toLocaleString()}
+          </span>`;
+    return `<div class="${cardClass}" role="listitem" data-id="${a.id}" tabindex="0" aria-pressed="${isActive}">
+      <div class="profile-avatar" style="background:${color};${isGrantOnly?'border:2px dashed var(--color-gold);':''}">${getInitials(a.display_name)}</div>
+      <div class="profile-info">
+        <div class="profile-name">${a.display_name}</div>
+        <div class="profile-dept">${isGrantOnly ? 'Grant Record' : a.school}</div>
+        <div class="profile-meta">${metaContent}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.profile-card').forEach(card => {
+    card.addEventListener('click', () => selectAuthor(card.dataset.id));
+    card.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' ') { e.preventDefault(); selectAuthor(card.dataset.id); }});
+  });
+}
+
+// ============================================================
+//  AUTHOR SELECTION — syncs both panels
+// ============================================================
+function selectAuthor(id) {
+  state.activeAuthorId = id;
+  const author = state.authors.find(a => a.id === id);
+  if (!author) return;
+  // If this author is hidden by the current school filter, clear it so they appear
+  if (state.selectedSchool !== 'ALL' && author.school !== state.selectedSchool) {
+    setSchoolFilter('ALL');
+  } else {
+    renderProfilesList();
+  }
+  openDrawer(author);
+  highlightNode(id);
+  // Scroll left panel card into view
+  const card = document.querySelector(`.profile-card[data-id="${id}"]`);
+  if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  // Pan to node in network if it exists
+  if (nodeSel && state.zoom && svgSel) {
+    nodeSel.each(d => {
+      if (d.id === id && d.x != null) {
+        const svg = document.getElementById('network-svg');
+        const W = svg.clientWidth || 800;
+        const H = svg.clientHeight || 600;
+        // Get current scale, keep it, just center on node
+        const currentT = d3.zoomTransform(svg);
+        const scale = Math.max(currentT.k, 1.2);
+        svgSel.transition().duration(500).call(
+          state.zoom.transform,
+          d3.zoomIdentity.translate(W / 2 - scale * d.x, H / 2 - scale * d.y).scale(scale)
+        );
+      }
+    });
+  }
+}
+
+// ============================================================
+//  DETAIL DRAWER
+// ============================================================
+function openDrawer(author) {
+  const color = SCHOOL_COLORS[author.school] || SCHOOL_COLORS.Other;
+  document.getElementById('drawer-avatar').style.background = color;
+  document.getElementById('drawer-avatar').textContent = getInitials(author.display_name);
+  document.getElementById('drawer-name').textContent = author.display_name;
+  document.getElementById('drawer-dept').textContent = author.school;
+  const badge = document.getElementById('drawer-school-badge');
+  badge.textContent = author.school;
+  badge.style.background = color;
+
+  // Stats
+  const connections = state.links.filter(l =>
+    (l.source.id||l.source) === author.id || (l.target.id||l.target) === author.id
+  ).length;
+  document.getElementById('drawer-stats').innerHTML = `
+    <div class="drawer-stat">
+      <div class="drawer-stat-value">${(author.works_count||0).toLocaleString()}</div>
+      <div class="drawer-stat-label">Works</div>
+    </div>
+    <div class="drawer-stat">
+      <div class="drawer-stat-value">${formatCitations(author.cited_by_count||0)}</div>
+      <div class="drawer-stat-label">Citations</div>
+    </div>
+    <div class="drawer-stat">
+      <div class="drawer-stat-value">${connections}</div>
+      <div class="drawer-stat-label">Connections</div>
+    </div>`;
+
+  // Body: topics + collaborators
+  const topics = (author.topics||[]).slice(0,10);
+  const topicHtml = topics.length ? `
+    <div class="drawer-section-title">Research Areas</div>
+    <div class="topic-chips">${topics.map(t=>`<span class="topic-chip">${t.display_name}</span>`).join('')}</div>` : '';
+
+  const collabLinks = state.links
+    .filter(l => (l.source.id||l.source)===author.id || (l.target.id||l.target)===author.id)
+    .sort((a,b) => b.strength - a.strength)
+    .slice(0, 15);
+
+  const collabHtml = collabLinks.length ? `
+    <div class="drawer-section-title">Potential Collaborators (${collabLinks.length})</div>
+    ${collabLinks.map(link => {
+      const otherId = (link.source.id||link.source) === author.id ? (link.target.id||link.target) : (link.source.id||link.source);
+      const other = state.authors.find(a => a.id === otherId);
+      if (!other) return '';
+      const otherColor = SCHOOL_COLORS[other.school] || SCHOOL_COLORS.Other;
+      return `<div class="collab-item" data-id="${other.id}" role="button" tabindex="0" aria-label="View ${other.display_name}'s profile">
+        <div class="collab-avatar" style="background:${otherColor}">${getInitials(other.display_name)}</div>
+        <div>
+          <div class="collab-name">${other.display_name}</div>
+          <div class="collab-shared">${link.strength} shared topic${link.strength>1?'s':''}: ${(link.sharedTopics||[]).slice(0,2).join(', ')}</div>
+        </div>
+      </div>`;
+    }).join('')}` : '';
+
+  // Grants section
+  const authorGrants = (author.grants || []).sort((a,b) => (b.year||0)-(a.year||0));
+  const grantHtml = authorGrants.length ? `
+    <div class="drawer-section-title">Grants (${authorGrants.length})</div>
+    <div class="grants-list">
+      ${authorGrants.slice(0,8).map(g => `
+        <div class="grant-item">
+          <div class="grant-header">
+            <span class="grant-agency ${g.agency}">${g.agency === 'FED' ? (g.awardingAgency||'Federal').split(' ')[0].slice(0,6).toUpperCase() : g.agency}</span>
+            <span class="grant-title">${g.title || 'Untitled Grant'}</span>
+          </div>
+          <div class="grant-meta">
+            ${g.year ? g.year : ''}${g.amount > 0 ? (g.year ? ' · ' : '') + '$' + g.amount.toLocaleString() : ''}
+          </div>
+        </div>`).join('')}
+      ${authorGrants.length > 8 ? `<div class="grant-meta" style="padding:var(--space-2) 0">+ ${authorGrants.length - 8} more grants</div>` : ''}
+    </div>` : '';
+
+  document.getElementById('drawer-body').innerHTML = topicHtml + grantHtml + collabHtml;
+  document.getElementById('drawer-openalex-link').href = author.id;
+
+  document.getElementById('drawer-body').querySelectorAll('.collab-item').forEach(el => {
+    el.addEventListener('click', () => selectAuthor(el.dataset.id));
+    el.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){e.preventDefault(); selectAuthor(el.dataset.id);}});
+  });
+
+  const drawer = document.getElementById('detail-drawer');
+  drawer.classList.add('open');
+  drawer.removeAttribute('aria-hidden');
+}
+
+function closeDrawer() {
+  document.getElementById('detail-drawer').classList.remove('open');
+  document.getElementById('detail-drawer').setAttribute('aria-hidden', 'true');
+  state.activeAuthorId = null;
+  clearHighlight();
+  renderProfilesList();
+}
+
+function formatCitations(n) {
+  if (n >= 1000) return (n/1000).toFixed(1).replace('.0','') + 'k';
+  return n.toString();
+}
+
+// ============================================================
+//  D3 NETWORK
+// ============================================================
+let svgSel, gRoot, linkSel, grantLinkSel, nodeSel, simulation;
+
+function initNetwork() {
+  const svg = document.getElementById('network-svg');
+  svgSel = d3.select(svg);
+  gRoot = d3.select('#svg-root');
+
+  state.zoom = d3.zoom()
+    .scaleExtent([0.1, 8])
+    .on('zoom', e => gRoot.attr('transform', e.transform));
+  svgSel.call(state.zoom);
+}
+
+function renderNetwork() {
+  const svg = document.getElementById('network-svg');
+  const W = svg.clientWidth || 800;
+  const H = svg.clientHeight || 600;
+
+  const q = state.searchQuery.toLowerCase();
+  let filteredAuthors = state.authors.filter(a => {
+    if (state.selectedSchool !== 'ALL' && a.school !== state.selectedSchool) return false;
+    return true;
+  });
+
+  // Apply viewMode: 'grants' hides pure-OpenAlex nodes with no grants
+  if (state.viewMode === 'grants') {
+    filteredAuthors = filteredAuthors.filter(a => a._hasGrant);
+  } else if (state.viewMode === 'publications') {
+    filteredAuthors = filteredAuthors.filter(a => !a._grantOnly);
+  }
+
+  const filteredIds = new Set(filteredAuthors.map(a => a.id));
+  let filteredLinks = (state.viewMode === 'grants' ? [] : state.links).filter(l => {
+    const s = l.source.id || l.source;
+    const t = l.target.id || l.target;
+    return filteredIds.has(s) && filteredIds.has(t) && l.strength >= state.minStrength;
+  });
+
+  // Show connection count
+  document.getElementById('stat-connections').style.display = '';
+  document.getElementById('conn-count').textContent = filteredLinks.length;
+
+  gRoot.selectAll('*').remove();
+  if (simulation) simulation.stop();
+
+  // ── Publication topic links (grey → red) ──
+  const linkG = gRoot.append('g').attr('class','links');
+  linkSel = linkG.selectAll('line')
+    .data(state.viewMode !== 'grants' ? filteredLinks : [])
+    .enter().append('line')
+    .attr('class','link')
+    .attr('stroke', d => d.strength >= 4 ? 'var(--color-primary)' : d.strength >= 2 ? '#8a8580' : '#bbb8b4')
+    .attr('stroke-opacity', d => d.strength >= 4 ? 0.5 : d.strength >= 2 ? 0.35 : 0.22)
+    .attr('stroke-width', d => d.strength >= 4 ? Math.min(d.strength * 0.7, 4) : Math.min(d.strength * 0.6, 2))
+    .on('mouseenter', (event, d) => {
+      const src = typeof d.source === 'object' ? d.source.display_name : d.source;
+      const tgt = typeof d.target === 'object' ? d.target.display_name : d.target;
+      const topics = (d.sharedTopics || []).slice(0, 3).join(', ');
+      const tt = document.getElementById('net-tooltip');
+      tt.innerHTML = `<strong>${src} ↔ ${tgt}</strong>${d.strength} shared topic${d.strength > 1 ? 's' : ''}: ${topics}`;
+      tt.classList.add('visible');
+      moveTooltip(event);
+    })
+    .on('mousemove', moveTooltip)
+    .on('mouseleave', hideTooltip);
+
+  // ── Grant links (gold) — drawn on top of pub links ──
+  const filteredGrantLinks = state.grantLinks.filter(l => {
+    const s = l.source.id || l.source;
+    const t = l.target.id || l.target;
+    return filteredIds.has(s) && filteredIds.has(t);
+  });
+  const grantLinkG = gRoot.append('g').attr('class','grant-links');
+  grantLinkSel = grantLinkG.selectAll('line')
+    .data(state.viewMode !== 'publications' ? filteredGrantLinks : [])
+    .enter().append('line')
+    .attr('class','grant-link')
+    .attr('stroke', 'var(--color-gold)')
+    .attr('stroke-width', d => Math.min(1.5 + d.strength * 0.5, 4))
+    .on('mouseenter', (event, d) => {
+      const src = typeof d.source === 'object' ? d.source.display_name : d.source;
+      const tgt = typeof d.target === 'object' ? d.target.display_name : d.target;
+      const agencies = (d.agencies || []).join(' + ');
+      const titles = (d.grantTitles || []).slice(0,2).join('; ');
+      const tt = document.getElementById('net-tooltip');
+      tt.innerHTML = `<strong>🏛 ${src} ↔ ${tgt}</strong>${agencies} grant co-investigators${titles ? ': ' + titles : ''}`;
+      tt.classList.add('visible');
+      moveTooltip(event);
+    })
+    .on('mousemove', moveTooltip)
+    .on('mouseleave', hideTooltip);
+
+  // Draw nodes
+  const nodeG = gRoot.append('g').attr('class','nodes');
+  nodeSel = nodeG.selectAll('g.node')
+    .data(filteredAuthors, d => d.id)
+    .enter().append('g')
+    .attr('class','node')
+    .call(d3.drag()
+      .on('start', dragStarted)
+      .on('drag', dragged)
+      .on('end', dragEnded));
+
+  const nodeR = d => Math.max(6, Math.min(20, 4 + Math.sqrt(d.works_count || 1) * 1.2));
+
+  nodeSel.append('circle')
+    .attr('r', nodeR)
+    .attr('fill', d => SCHOOL_COLORS[d.school] || SCHOOL_COLORS.Other)
+    .attr('stroke', 'rgba(255,255,255,0.5)')
+    .attr('stroke-width', 1.5);
+
+  // Gold ring for grant-matched nodes (solid = OpenAlex + grant; dashed = grant-only stub)
+  nodeSel.filter(d => d._hasGrant)
+    .append('circle')
+    .attr('r', d => nodeR(d) + 4)
+    .attr('fill', 'none')
+    .attr('stroke', 'var(--color-gold)')
+    .attr('stroke-width', d => d._grantOnly ? 1.5 : 2)
+    .attr('stroke-dasharray', d => d._grantOnly ? '3,2' : null)
+    .attr('pointer-events', 'none')
+    .attr('opacity', 0.85);
+
+  // Initials inside node — visible at r > 9
+  nodeSel.append('text')
+    .text(d => nodeR(d) >= 9 ? getInitials(d.display_name) : '')
+    .attr('text-anchor', 'middle')
+    .attr('dominant-baseline', 'central')
+    .attr('font-size', d => Math.max(6, nodeR(d) * 0.58))
+    .attr('font-weight', '700')
+    .attr('font-family', 'var(--font-body)')
+    .attr('fill', 'rgba(255,255,255,0.92)')
+    .attr('pointer-events', 'none');
+
+  // Name label below node (hidden by default, shown at high zoom via CSS)
+  nodeSel.append('text')
+    .attr('class', 'node-label')
+    .text(d => d.display_name.split(' ').slice(-1)[0]) // last name only
+    .attr('text-anchor', 'middle')
+    .attr('dy', d => nodeR(d) + 10)
+    .attr('font-size', 8)
+    .attr('fill', 'var(--color-text-muted)')
+    .attr('pointer-events', 'none');
+
+  nodeSel.on('mouseenter', (event, d) => showTooltip(event, d))
+    .on('mousemove', (event) => moveTooltip(event))
+    .on('mouseleave', hideTooltip)
+    .on('click', (event, d) => { event.stopPropagation(); selectAuthor(d.id); });
+
+  // Simulation
+  simulation = d3.forceSimulation(filteredAuthors)
+    .force('link', d3.forceLink(filteredLinks).id(d => d.id).distance(70).strength(0.3))
+    .force('charge', d3.forceManyBody().strength(-160))
+    .force('center', d3.forceCenter(W/2, H/2))
+    .force('collision', d3.forceCollide().radius(d => Math.max(7, Math.sqrt(d.works_count||1)*1.3 + 5)))
+    .alphaDecay(0.028)
+    .on('tick', ticked)
+    .on('end', () => {
+      // Auto-fit only on initial render (not on filter changes)
+      if (!state._hasAutoFit) {
+        state._hasAutoFit = true;
+        resetView();
+      }
+    });
+
+  state.simulation = simulation;
+
+  // Click on background = deselect
+  svgSel.on('click', () => { closeDrawer(); });
+}
+
+function ticked() {
+  const pos = d => ({ x1: d.source.x||0, y1: d.source.y||0, x2: d.target.x||0, y2: d.target.y||0 });
+  if (linkSel)      linkSel.attr('x1',d=>d.source.x||0).attr('y1',d=>d.source.y||0).attr('x2',d=>d.target.x||0).attr('y2',d=>d.target.y||0);
+  if (grantLinkSel) grantLinkSel.attr('x1',d=>d.source.x||0).attr('y1',d=>d.source.y||0).attr('x2',d=>d.target.x||0).attr('y2',d=>d.target.y||0);
+  if (nodeSel)      nodeSel.attr('transform', d => `translate(${d.x||0},${d.y||0})`);
+}
+
+function dragStarted(event, d) {
+  if (!event.active && simulation) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x; d.fy = d.y;
+}
+function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+function dragEnded(event, d) {
+  if (!event.active && simulation) simulation.alphaTarget(0);
+  d.fx = null; d.fy = null;
+}
+
+function highlightNode(authorId) {
+  if (!nodeSel) return;
+  const connectedIds = new Set([authorId]);
+  const checkLink = sel => sel && sel.each(d => {
+    const s = d.source.id||d.source, t = d.target.id||d.target;
+    if (s === authorId) connectedIds.add(t);
+    if (t === authorId) connectedIds.add(s);
+  });
+  checkLink(linkSel);
+  checkLink(grantLinkSel);
+  nodeSel.classed('dimmed', d => !connectedIds.has(d.id));
+  const applyLink = (sel, cls) => sel && sel
+    .classed('dimmed', d => { const s=d.source.id||d.source,t=d.target.id||d.target; return s!==authorId&&t!==authorId; })
+    .classed(cls, d => { const s=d.source.id||d.source,t=d.target.id||d.target; return s===authorId||t===authorId; });
+  applyLink(linkSel, 'highlighted');
+  applyLink(grantLinkSel, 'highlighted');
+}
+
+function clearHighlight() {
+  if (nodeSel) nodeSel.classed('dimmed', false);
+  if (linkSel) linkSel.classed('dimmed', false).classed('highlighted', false);
+  if (grantLinkSel) grantLinkSel.classed('dimmed', false).classed('highlighted', false);
+}
+
+// Tooltip
+function showTooltip(event, d) {
+  const tt = document.getElementById('net-tooltip');
+  const connCount = state.links.filter(l => (l.source.id||l.source)===d.id||(l.target.id||l.target)===d.id).length;
+  tt.innerHTML = `<strong>${d.display_name}</strong>${d.school} · ${d.works_count} works · ${connCount} connections`;
+  tt.classList.add('visible');
+  moveTooltip(event);
+}
+function moveTooltip(event) {
+  const tt = document.getElementById('net-tooltip');
+  const rect = document.getElementById('network-svg').getBoundingClientRect();
+  let x = event.clientX - rect.left + 12;
+  let y = event.clientY - rect.top + 12;
+  if (x + 200 > rect.width) x = event.clientX - rect.left - 212;
+  tt.style.left = x + 'px';
+  tt.style.top = y + 'px';
+}
+function hideTooltip() {
+  document.getElementById('net-tooltip').classList.remove('visible');
+}
+
+// ============================================================
+//  RESET VIEW — zoom-to-fit the actual graph bounds
+// ============================================================
+function resetView() {
+  if (!state.zoom || !svgSel || !nodeSel) return;
+  const svg = document.getElementById('network-svg');
+  const W = svg.clientWidth || 800;
+  const H = svg.clientHeight || 600;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  nodeSel.each(d => {
+    if (d.x != null) { minX = Math.min(minX, d.x); maxX = Math.max(maxX, d.x); }
+    if (d.y != null) { minY = Math.min(minY, d.y); maxY = Math.max(maxY, d.y); }
+  });
+  if (!isFinite(minX)) {
+    svgSel.transition().duration(500).call(state.zoom.transform, d3.zoomIdentity.translate(W/2, H/2));
+    return;
+  }
+  const pad = 60;
+  const gW = maxX - minX || 1;
+  const gH = maxY - minY || 1;
+  const scale = Math.min((W - pad * 2) / gW, (H - pad * 2) / gH, 2);
+  const tx = W / 2 - scale * (minX + maxX) / 2;
+  const ty = H / 2 - scale * (minY + maxY) / 2;
+  svgSel.transition().duration(600).call(
+    state.zoom.transform,
+    d3.zoomIdentity.translate(tx, ty).scale(scale)
+  );
+}
+
+// ============================================================
+//  INIT & EVENT WIRING
+// ============================================================
+document.getElementById('close-drawer').addEventListener('click', closeDrawer);
+document.getElementById('reset-view').addEventListener('click', resetView);
+
+// View filter chips: All / Publications / Grants
+document.querySelectorAll('.view-chip').forEach(btn => {
+  btn.addEventListener('click', function() {
+    state.viewMode = this.dataset.view;
+    state._hasAutoFit = false; // re-fit on view change
+    document.querySelectorAll('.view-chip').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    renderNetwork();
+    renderProfilesList();
+  });
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (document.getElementById('detail-drawer').classList.contains('open')) {
+      closeDrawer();
+    } else if (state.searchQuery) {
+      state.searchQuery = '';
+      document.getElementById('global-search').value = '';
+      renderProfilesList();
+      applySearchHighlight();
+    }
+  }
+  // Keyboard shortcut: R = reset view
+  if ((e.key === 'r' || e.key === 'R') && !e.target.closest('input')) {
+    resetView();
+  }
+});
+
+// Global search — updates left panel and highlights in network
+document.getElementById('global-search').addEventListener('input', e => {
+  state.searchQuery = e.target.value.trim();
+  renderProfilesList();
+  applySearchHighlight();
+});
+
+function applySearchHighlight() {
+  if (!nodeSel || !linkSel) return;
+  const q = state.searchQuery.toLowerCase();
+  if (!q) {
+    nodeSel.classed('dimmed', false);
+    linkSel.classed('dimmed', false).classed('highlighted', false);
+    return;
+  }
+  const matchIds = new Set(
+    state.authors
+      .filter(a =>
+        a.display_name.toLowerCase().includes(q) ||
+        (a.topics || []).some(t => (t.display_name || '').toLowerCase().includes(q)) ||
+        a.school.toLowerCase().includes(q))
+      .map(a => a.id)
+  );
+  nodeSel.classed('dimmed', d => !matchIds.has(d.id));
+  linkSel
+    .classed('highlighted', d => matchIds.has(d.source.id || d.source) && matchIds.has(d.target.id || d.target))
+    .classed('dimmed', d => !matchIds.has(d.source.id || d.source) && !matchIds.has(d.target.id || d.target));
+}
+
+// Panel school tabs
+// Shared school filter — syncs sidebar tabs, network chips, sidebar list, and network graph
+function setSchoolFilter(school) {
+  state.selectedSchool = school;
+  state._hasAutoFit = false;
+  // Sync left panel tabs
+  document.querySelectorAll('.panel-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.school === school);
+    t.setAttribute('aria-selected', t.dataset.school === school);
+  });
+  // Sync network toolbar chips
+  document.querySelectorAll('#net-school-filters .chip').forEach(c =>
+    c.classList.toggle('active', c.dataset.school === school));
+  renderProfilesList();
+  renderNetwork();
+}
+
+document.querySelectorAll('.panel-tab').forEach(tab => {
+  tab.addEventListener('click', () => setSchoolFilter(tab.dataset.school));
+});
+
+document.querySelectorAll('#net-school-filters .chip').forEach(chip => {
+  chip.addEventListener('click', () => setSchoolFilter(chip.dataset.school));
+});
+
+// Strength slider
+document.getElementById('strength-slider').addEventListener('input', e => {
+  state.minStrength = parseInt(e.target.value);
+  document.getElementById('strength-val').textContent = e.target.value;
+  renderNetwork();
+});
+
+// Dark mode toggle
+(function(){
+  const t = document.getElementById('theme-toggle');
+  const r = document.documentElement;
+  let d = matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
+  r.setAttribute('data-theme', d);
+  const moonSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  const sunSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
+  t.innerHTML = d === 'dark' ? sunSvg : moonSvg;
+  t.addEventListener('click', () => {
+    d = d === 'dark' ? 'light' : 'dark';
+    r.setAttribute('data-theme', d);
+    t.innerHTML = d === 'dark' ? sunSvg : moonSvg;
+    t.setAttribute('aria-label', 'Switch to ' + (d==='dark'?'light':'dark') + ' mode');
+  });
+})();
+
+// ============================================================
+//  BOOT
+// ============================================================
+// Generate plausible sample grant data from the actual loaded faculty
+// Used as fallback when NIH/NSF are CORS-blocked (file:// origin)
+function generateSampleGrants(authors) {
+  const agencies = [
+    { name: 'NIH', programs: ['R01','R21','R03','K99','T32'] },
+    { name: 'NSF', programs: ['SES','BCS','CNS','IIS','EHR'] },
+  ];
+  const topics = [
+    'Health Disparities and Community Intervention',
+    'Democratic Governance and Policy Reform',
+    'International Security and Conflict Resolution',
+    'Media, Misinformation and Public Discourse',
+    'Environmental Policy and Climate Adaptation',
+    'Technology Ethics and Digital Equity',
+    'Legal Reform and Access to Justice',
+    'Economic Mobility and Workforce Development',
+  ];
+
+  // Shuffle and pick a representative sample across schools
+  const bySchool = {};
+  authors.forEach(a => { (bySchool[a.school] = bySchool[a.school] || []).push(a); });
+
+  const grants = [];
+  let grantId = 1;
+
+  // For each topic, create 1–2 grants with 2–3 co-PIs drawn from different schools
+  topics.forEach((topic, i) => {
+    const agency = agencies[i % agencies.length];
+    const program = agency.programs[i % agency.programs.length];
+    const year = 2020 + (i % 5);
+
+    // Pick co-PIs: one from a random school, then one or two more
+    const schoolKeys = Object.keys(bySchool).filter(s => bySchool[s].length > 0 && s !== 'Grant Record');
+    if (schoolKeys.length < 2) return;
+    const school1 = schoolKeys[i % schoolKeys.length];
+    const school2 = schoolKeys[(i + 1) % schoolKeys.length];
+    const pi1 = bySchool[school1][Math.floor(bySchool[school1].length * ((i * 0.37) % 1))];
+    const pi2 = bySchool[school2][Math.floor(bySchool[school2].length * ((i * 0.61) % 1))];
+    const pis = [pi1.display_name, pi2.display_name];
+
+    // Occasionally add a third co-PI
+    if (i % 3 === 0 && schoolKeys.length > 2) {
+      const school3 = schoolKeys[(i + 2) % schoolKeys.length];
+      const pi3 = bySchool[school3][Math.floor(bySchool[school3].length * ((i * 0.83) % 1))];
+      if (pi3 && pi3 !== pi1 && pi3 !== pi2) pis.push(pi3.display_name);
+    }
+
+    grants.push({
+      id: `sample-${grantId++}`,
+      title: `${program}-${year}-${String(grantId).padStart(6,'0')}: ${topic}`,
+      pis,
+      year,
+      amount: Math.round((150000 + Math.random() * 850000) / 1000) * 1000,
+      agency: agency.name,
+      terms: topic.toLowerCase().split(' ').filter(w => w.length > 4),
+      _isSample: true
+    });
+  });
+
+  return grants;
+}
+
+async function init() {
+  initNetwork();
+  try {
+    // Step 1: Faculty from OpenAlex
+    const raw = await loadAllFaculty();
+    setLoadingText('Assigning schools…', `${raw.length} faculty loaded`);
+    raw.forEach(a => { a.school = inferSchool(a); a.grants = []; });
+    state.authors = raw.sort((a,b) => (b.cited_by_count||0) - (a.cited_by_count||0));
+
+    // Step 2: Publication links
+    state.links = await buildLinks(state.authors);
+
+    // Step 3: Grant data — all three sources in parallel
+    setLoadingText('Fetching grant data…', 'Querying NIH · NSF · USASpending');
+    const [nihGrants, nsfGrants, fedGrants] = await Promise.all([
+      fetchNIHGrants(),
+      fetchNSFGrants(),
+      fetchUSASpendingGrants()
+    ]);
+    state.grants = [...nihGrants, ...nsfGrants, ...fedGrants];
+    console.log(`[Grants] NIH: ${nihGrants.length}, NSF: ${nsfGrants.length}, FED: ${fedGrants.length}`);
+    if (nihGrants.length > 0) console.log('[NIH sample]', nihGrants[0]);
+    if (nsfGrants.length > 0) console.log('[NSF sample]', nsfGrants[0]);
+    setLoadingText('Matching grants to faculty…', `${state.grants.length} grants found across NIH, NSF, and federal sources`);
+    await new Promise(r => setTimeout(r, 0)); // yield to render
+
+    // Step A: attach grants to known authors (gold ring + drawer)
+    attachGrantsToAuthors(state.authors, state.grants);
+    const matchedCount = state.authors.filter(a => a._hasGrant).length;
+    console.log(`[Grants] Matched to ${matchedCount} OpenAlex authors`);
+
+    // Step B: create stub nodes for PIs not in OpenAlex
+    const stubs = buildGrantOnlyNodes(state.authors, state.grants);
+    setLoadingText('Building grant network…', `${stubs.length} new grant-only researchers surfaced`);
+    state.authors = [...state.authors, ...stubs];
+    await new Promise(r => setTimeout(r, 0));
+
+        // Step B.5: if APIs were CORS-blocked (file:// origin), fall back to sample grant data
+    const noRealGrants = matchedCount === 0 && state.grants.filter(g => g.pis.length > 0).length === 0;
+    if (noRealGrants && state.authors.length > 0) {
+      state.grants = generateSampleGrants(state.authors);
+      attachGrantsToAuthors(state.authors, state.grants);
+      console.log('[Grants] Using sample data — live APIs require a web server (CORS)');
+    }
+
+    // Step C: build gold edges across full author list (including stubs)
+    state.grantLinks = buildGrantLinks(state.authors, state.grants);
+
+    // Update stat pills
+    document.getElementById('stat-count').textContent = state.authors.length;
+    const grantStatEl = document.getElementById('stat-grants');
+    grantStatEl.style.display = '';
+    document.getElementById('grant-count').textContent = state.grants.filter(g => g.pis.length > 0).length;
+
+    // Hide loading overlay
+    const overlay = document.getElementById('loading-overlay');
+    overlay.classList.add('hidden');
+    setTimeout(() => overlay.remove(), 500);
+
+    // Render both panels
+    renderProfilesList();
+    renderNetwork();
+  } catch(err) {
+    document.getElementById('loading-text').textContent = 'Could not load data';
+    document.getElementById('loading-sub').textContent = 'Check your internet connection and try refreshing';
+    console.error(err);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
