@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Research Compass — AU Faculty Research Network</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="research-compass.css">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- TOP BAR -->
+  <header class="topbar" role="banner">
+    <div class="topbar-logo" aria-label="AU Faculty Research Hub">
+      <svg viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <rect x="2" y="2" width="24" height="24" rx="5" fill="var(--color-primary)"/>
+        <circle cx="10" cy="14" r="3" fill="white"/>
+        <circle cx="20" cy="9" r="2.5" fill="white" opacity="0.85"/>
+        <circle cx="20" cy="19" r="2.5" fill="white" opacity="0.85"/>
+        <line x1="13" y1="14" x2="17.5" y2="10.3" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="13" y1="14" x2="17.5" y2="17.7" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="topbar-title">Research Compass</span>
+    <span class="topbar-subtitle">— AU Faculty Research Network</span>
+    <div class="topbar-divider"></div>
+    <div class="topbar-search">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="search" id="global-search" placeholder="Search faculty, departments, topics…" aria-label="Search faculty">
+    </div>
+    <div class="topbar-actions">
+      <div class="stat-pill" id="stat-faculty"><strong id="stat-count">—</strong>&nbsp;faculty</div>
+      <div class="stat-pill" id="stat-enriched" style="display:none"><strong id="enriched-count">—</strong>&nbsp;with pub data</div>
+      <div class="stat-pill" id="stat-connections" style="display:none"><strong id="conn-count">—</strong>&nbsp;connections</div>
+      <button class="btn-icon" id="theme-toggle" aria-label="Toggle dark mode">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- PROFILES PANEL (left) -->
+  <aside class="profiles-panel" aria-label="Faculty directory">
+    <div class="panel-header">
+      <h2>Faculty Profiles</h2>
+      <span id="filtered-count" style="font-size:var(--text-xs);color:var(--color-text-muted)"></span>
+    </div>
+    <nav class="panel-tabs" role="tablist" aria-label="Filter by school" id="school-tabs">
+      <!-- populated from data -->
+    </nav>
+    <div class="profiles-list" id="profiles-list" role="list" aria-label="Faculty list">
+      <div id="skeletons"></div>
+    </div>
+  </aside>
+
+  <!-- NETWORK PANEL (right) -->
+  <main class="network-panel" aria-label="Research collaboration network">
+    <div class="source-banner" id="source-banner" style="display:none"></div>
+    <div class="network-toolbar" role="toolbar" aria-label="Network controls">
+      <span class="toolbar-label">Include:</span>
+      <button class="toggle-chip" id="toggle-adjunct" aria-pressed="false"><span class="dot"></span>Adjuncts</button>
+      <button class="toggle-chip" id="toggle-visiting" aria-pressed="false"><span class="dot"></span>Visiting / In-Residence</button>
+      <button class="toggle-chip" id="toggle-emeritus" aria-pressed="false"><span class="dot"></span>Emeritus</button>
+      <div class="toolbar-sep"></div>
+      <div class="slider-group">
+        <span class="toolbar-label">Min. shared topics:</span>
+        <input type="range" id="strength-slider" min="1" max="5" value="2" aria-label="Minimum shared topics">
+        <span class="toolbar-label" id="strength-val">2</span>
+      </div>
+      <div class="toolbar-sep"></div>
+      <span class="toolbar-label">View:</span>
+      <button class="view-chip active" data-view="all">All</button>
+      <button class="view-chip" data-view="publications">Publications</button>
+      <button class="view-chip" data-view="grants">Grants</button>
+      <div class="toolbar-sep"></div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:var(--color-primary)"></div>
+        <span>Shared topics</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:var(--color-gold)"></div>
+        <span>Shared grants</span>
+      </div>
+      <div class="legend-item">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="6" stroke="var(--color-gold)" stroke-width="1.8"/>
+        </svg>
+        <span>Has grant</span>
+      </div>
+      <div class="toolbar-sep"></div>
+      <button class="toggle-chip active" id="toggle-isolated" aria-pressed="true"><span class="dot"></span>Hide unconnected</button>
+      <button class="btn-reset" id="reset-view">Reset View</button>
+    </div>
+    <svg id="network-svg" aria-label="Faculty collaboration network graph">
+      <g id="svg-root"></g>
+    </svg>
+    <!-- Profile Detail Drawer -->
+    <aside class="detail-drawer" id="detail-drawer" aria-label="Faculty detail" aria-hidden="true">
+      <div class="drawer-header" id="drawer-header">
+        <div class="drawer-avatar" id="drawer-avatar"></div>
+        <div class="drawer-name-block">
+          <div class="drawer-name" id="drawer-name"></div>
+          <div class="drawer-dept" id="drawer-dept"></div>
+          <span class="drawer-school-badge" id="drawer-school-badge"></span>
+        </div>
+        <button class="btn-close-drawer" id="close-drawer" aria-label="Close detail panel">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="drawer-stats" id="drawer-stats"></div>
+      <div class="drawer-body" id="drawer-body"></div>
+      <div class="drawer-links" id="drawer-links"></div>
+    </aside>
+    <div class="net-tooltip" id="net-tooltip"></div>
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loading-overlay" aria-live="polite">
+      <div class="loading-spinner"></div>
+      <div class="loading-text" id="loading-text">Loading faculty roster…</div>
+      <div class="loading-sub" id="loading-sub"></div>
+    </div>
+  </main>
+</div>
+
+<script src="research-compass.js"></script>
+</body>
+</html>
