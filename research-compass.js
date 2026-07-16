@@ -66,11 +66,35 @@ function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Short queries (≤3 chars, e.g. acronyms) must match whole words — plain
-// substring would make "AI" hit "Airapetian". Longer queries stay substring.
+// Small, conservative suffix list (longest-first) for reducing a query to a
+// coarse word stem — enough to unify noun/adjective and singular/plural forms
+// (cognition~cognitive, biology~biological, policy~policies) without the
+// surprises of a full stemmer. Deliberately hand-picked and easy to audit.
+const STEM_SUFFIXES = [
+  'ational', 'ically', 'isation', 'ization', 'ations', 'itions', 'ities',
+  'ology', 'ation', 'ition', 'ical', 'ance', 'ence', 'ics', 'ive', 'ion',
+  'ity', 'ies', 'ing', 'ism', 'ist', 'al', 'ic', 'es', 's', 'y', 'e',
+];
+
+// Strip ONE suffix, but only if the remaining stem stays ≥5 chars — so
+// "cognition"→"cognit" (not "cogn", which would over-match "cognate").
+function stemQuery(q) {
+  for (const s of STEM_SUFFIXES) {
+    if (q.endsWith(s) && q.length - s.length >= 5) return q.slice(0, q.length - s.length);
+  }
+  return q;
+}
+
+// Match at word starts, and handle two regimes:
+//  - Short queries (≤3 chars, i.e. acronyms like AI/ML/IR): WHOLE-word match,
+//    so "AI" finds the word "AI" but never "Airapetian".
+//  - Longer queries: reduce to a coarse stem, then prefix-match at a word
+//    boundary — so "cognition" finds "cognitive" and "neuro" finds
+//    "neuroscience", but "cognition" never matches "recognition".
 function textMatches(hay, term) {
+  term = term.toLowerCase();
   if (term.length <= 3) return new RegExp(`\\b${escapeRegex(term)}\\b`, 'i').test(hay);
-  return hay.includes(term);
+  return new RegExp(`\\b${escapeRegex(stemQuery(term))}`, 'i').test(hay);
 }
 
 function matchesQuery(hay, q) {
@@ -224,28 +248,35 @@ async function buildLinks(authors) {
 // ============================================================
 //  FILTERING — one source of truth used by list AND network
 // ============================================================
-function visibleAuthors() {
+// School / rank / view-mode filters — everything EXCEPT the search text.
+function passesBaseFilters(a) {
+  if (state.selectedSchool !== 'ALL' && a.schoolBucket !== state.selectedSchool) return false;
+  if (a.rank !== 'core' && !state.includeRanks[a.rank]) return false;
+  if (state.viewMode === 'publications' && !hasPubData(a)) return false;
+  if (state.viewMode === 'grants' && !a._hasGrant) return false;
+  return true;
+}
+
+// Does this person match the current search text? (True when no search.)
+function matchesSearch(a) {
   const q = state.searchQuery.toLowerCase();
-  return state.authors.filter(a => {
-    if (state.selectedSchool !== 'ALL' && a.schoolBucket !== state.selectedSchool) return false;
-    if (a.rank !== 'core' && !state.includeRanks[a.rank]) return false;
-    if (state.viewMode === 'publications' && !hasPubData(a)) return false;
-    if (state.viewMode === 'grants' && !a._hasGrant) return false;
-    if (q) {
-      const deep = state.deepProfiles[a.au_profile_url];
-      const interests = (deep && deep.sections && deep.sections.research_interests
-        && deep.sections.research_interests.items) || [];
-      const hay = [
-        a.name, a.department, a.school, a.title,
-        ...(a.fields.map(f => f.display_name || '')),
-        ...(a.topics.map(t => t.display_name || '')),
-        ...((a.dimGrants || []).map(g => `${g.title} ${g.funder}`)),
-        ...interests,
-      ].join(' ').toLowerCase();
-      if (!matchesQuery(hay, q)) return false;
-    }
-    return true;
-  });
+  if (!q) return true;
+  const deep = state.deepProfiles[a.au_profile_url];
+  const interests = (deep && deep.sections && deep.sections.research_interests
+    && deep.sections.research_interests.items) || [];
+  const hay = [
+    a.name, a.department, a.school, a.title,
+    ...(a.fields.map(f => f.display_name || '')),
+    ...(a.topics.map(t => t.display_name || '')),
+    ...((a.dimGrants || []).map(g => `${g.title} ${g.funder}`)),
+    ...interests,
+  ].join(' ').toLowerCase();
+  return matchesQuery(hay, q);
+}
+
+// The list's view: people passing every filter including search.
+function visibleAuthors() {
+  return state.authors.filter(a => passesBaseFilters(a) && matchesSearch(a));
 }
 
 function visibleLinks(idSet) {
@@ -585,6 +616,31 @@ function renderNetwork() {
   const H = svg.clientHeight || 600;
 
   let filteredAuthors = visibleAuthors();
+
+  // During a search, expand the graph to include the real neighbors of the
+  // matched people — so searching a single name (e.g. "Nicole Angotti") shows
+  // that person surrounded by her actual connections, exactly like clicking
+  // her does, instead of a lone isolated node. Neighbors must still pass the
+  // base school/rank/view filters; they simply don't have to match the search
+  // text. Matched people stay highlighted, neighbors are dimmed (see
+  // applySearchHighlight), so it's clear who matched vs. who's context.
+  if (state.searchQuery) {
+    const matchedIds = new Set(filteredAuthors.map(a => a.id));
+    const memberIds = new Set(matchedIds);
+    const linkPullsIn = (l, respectStrength) => {
+      if (respectStrength && (l.strength || 0) < state.minStrength) return;
+      const s = l.source.id || l.source, t = l.target.id || l.target;
+      const sMatched = matchedIds.has(s), tMatched = matchedIds.has(t);
+      if (sMatched === tMatched) return; // both or neither matched — no new neighbor
+      const neighbor = sMatched ? t : s;
+      const author = state.authors.find(a => a.id === neighbor);
+      if (author && passesBaseFilters(author)) memberIds.add(neighbor);
+    };
+    if (state.viewMode !== 'grants') state.links.forEach(l => linkPullsIn(l, true));
+    if (state.viewMode !== 'publications') state.grantLinks.forEach(l => linkPullsIn(l, false));
+    filteredAuthors = state.authors.filter(a => memberIds.has(a.id));
+  }
+
   const filteredIds = new Set(filteredAuthors.map(a => a.id));
   // topic links hidden in grants view; grant links hidden in publications view
   const filteredLinks = state.viewMode === 'grants' ? [] : visibleLinks(filteredIds);
@@ -853,6 +909,7 @@ function wireEvents() {
       state._hasAutoFit = false;
       renderNetwork();
       renderProfilesList();
+      applySearchHighlight(); // dim the pulled-in neighbors, highlight matches
     }, 300);
   });
 
