@@ -306,7 +306,9 @@ function renderProfilesList() {
   // the list; everyone else stays below for browsing.
   const gids = state._graphIds;
   let inView = filtered, outView = [];
-  if (gids && filtered.some(x => gids.has(x.id)) && filtered.some(x => !gids.has(x.id))) {
+  // Partition whenever the graph shows fewer people than the list — including
+  // the case where NOTHING qualifies ("In network view (0)" is information too).
+  if (gids && filtered.some(x => !gids.has(x.id))) {
     inView = filtered.filter(x => gids.has(x.id));
     outView = filtered.filter(x => !gids.has(x.id));
   }
@@ -593,9 +595,11 @@ function renderNetwork() {
       return filteredIds.has(s) && filteredIds.has(t);
     });
 
-  // In grants view most nodes have no edges — hiding isolated
-  // nodes there would blank the graph, so skip that filter.
-  if (state.hideIsolated && state.viewMode !== 'grants') {
+  // In grants view most nodes have no edges — hiding isolated nodes there
+  // would blank the graph, so skip that filter. Same during a search: the
+  // matched people should appear as nodes even if unconnected to each other
+  // (search answers "who matches", lines answer "who's related").
+  if (state.hideIsolated && state.viewMode !== 'grants' && !state.searchQuery) {
     const connected = new Set();
     [...filteredLinks, ...filteredGrantLinks].forEach(l => {
       connected.add(l.source.id || l.source);
@@ -836,10 +840,20 @@ function wireEvents() {
   document.getElementById('close-drawer').addEventListener('click', closeDrawer);
   document.getElementById('reset-view').addEventListener('click', resetView);
 
+  // Search rebuilds the graph (debounced) so the network and the list always
+  // describe the same filtered reality — highlight gives instant feedback in
+  // the meantime, then the rebuild replaces it.
+  let searchTimer = null;
   document.getElementById('global-search').addEventListener('input', e => {
     state.searchQuery = e.target.value.trim();
     renderProfilesList();
     applySearchHighlight();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      state._hasAutoFit = false;
+      renderNetwork();
+      renderProfilesList();
+    }, 300);
   });
 
   document.getElementById('strength-slider').addEventListener('input', e => {
@@ -893,6 +907,8 @@ function wireEvents() {
       } else if (state.searchQuery) {
         state.searchQuery = '';
         document.getElementById('global-search').value = '';
+        state._hasAutoFit = false;
+        renderNetwork();
         renderProfilesList();
         applySearchHighlight();
       }
