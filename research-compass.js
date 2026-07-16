@@ -30,7 +30,7 @@ const state = {
   dimGrantsTotal: 0, // total AU grants fetched from Dimensions
   selectedSchool: 'ALL',
   viewMode: 'all',   // 'all' | 'publications' | 'grants'
-  minStrength: 2,
+  minStrength: 3,
   includeRanks: { adjunct: false, visiting: false, emeritus: false },
   hideIsolated: true,
   activeAuthorId: null,
@@ -187,24 +187,29 @@ async function loadData() {
     rank: rankOf(p),
     schoolBucket: schoolBucket(p.school),
     topics: p.topics || [],
+    fields: p.fields || [],
   }));
 }
 
-// ── Topic links between confirmed-matched people (real OpenAlex topics) ──
+// ── Field links between confirmed-matched people ──
+// Connections are based on shared ANZSRC Fields of Research (standardized
+// categories from Dimensions), NOT the free-text concepts — two demographers
+// connect via "Demography" even if their paper wording never overlaps.
+// Concepts stay as descriptive detail in the drawer.
 async function buildLinks(authors) {
   const links = [];
   const matched = authors.filter(hasPubData);
   const n = matched.length;
   for (let i = 0; i < n; i++) {
-    const aTopics = new Set(matched[i].topics.map(t => t.id));
+    const aFields = new Set(matched[i].fields.map(f => f.id));
     for (let j = i + 1; j < n; j++) {
-      const shared = matched[j].topics.filter(t => aTopics.has(t.id));
+      const shared = matched[j].fields.filter(f => aFields.has(f.id));
       if (shared.length >= 1) {
         links.push({
           source: matched[i].id,
           target: matched[j].id,
           strength: shared.length,
-          sharedTopics: shared.slice(0, 5).map(t => t.display_name),
+          sharedTopics: shared.slice(0, 5).map(f => f.display_name),
         });
       }
     }
@@ -232,6 +237,7 @@ function visibleAuthors() {
         && deep.sections.research_interests.items) || [];
       const hay = [
         a.name, a.department, a.school, a.title,
+        ...(a.fields.map(f => f.display_name || '')),
         ...(a.topics.map(t => t.display_name || '')),
         ...((a.dimGrants || []).map(g => `${g.title} ${g.funder}`)),
         ...interests,
@@ -416,6 +422,11 @@ function openDrawer(author) {
   let body = '';
 
   if (hasPubData(author)) {
+    if (author.fields.length) {
+      body += `<div class="drawer-section-title">Research Fields <span style="font-weight:400;text-transform:none;letter-spacing:0">(Dimensions — basis for connections)</span></div>
+        <div class="topic-chips">${author.fields.map(f =>
+          `<span class="topic-chip" style="border-color:var(--color-primary);color:var(--color-primary)">${esc(f.display_name)}</span>`).join('')}</div>`;
+    }
     if (author.topics.length) {
       body += `<div class="drawer-section-title">Research Areas <span style="font-weight:400;text-transform:none;letter-spacing:0">(Dimensions concepts)</span></div>
         <div class="topic-chips">${author.topics.slice(0, 10).map(t =>
@@ -478,7 +489,7 @@ function openDrawer(author) {
     .sort((a, b) => b.strength - a.strength)
     .slice(0, 15);
   if (collabLinks.length) {
-    body += `<div class="drawer-section-title">Shared Research Topics (${collabLinks.length})</div>`
+    body += `<div class="drawer-section-title">Shared Research Fields (${collabLinks.length})</div>`
       + collabLinks.map(link => {
         const otherId = (link.source.id || link.source) === author.id
           ? (link.target.id || link.target) : (link.source.id || link.source);
@@ -488,7 +499,7 @@ function openDrawer(author) {
           <div class="collab-avatar" style="background:${SCHOOL_COLORS[other.schoolBucket]}">${esc(getInitials(other.name))}</div>
           <div>
             <div class="collab-name">${esc(other.name)}</div>
-            <div class="collab-shared">${link.strength} shared topic${link.strength > 1 ? 's' : ''}: ${esc((link.sharedTopics || []).slice(0, 2).join(', '))}</div>
+            <div class="collab-shared">${link.strength} shared field${link.strength > 1 ? 's' : ''}: ${esc((link.sharedTopics || []).slice(0, 2).join(', '))}</div>
           </div>
         </div>`;
       }).join('');
@@ -614,7 +625,7 @@ function renderNetwork() {
       const tgt = typeof d.target === 'object' ? d.target.name : d.target;
       const topics = (d.sharedTopics || []).slice(0, 3).join(', ');
       const tt = document.getElementById('net-tooltip');
-      tt.innerHTML = `<strong>${esc(src)} ↔ ${esc(tgt)}</strong>${d.strength} shared topic${d.strength > 1 ? 's' : ''}: ${esc(topics)}`;
+      tt.innerHTML = `<strong>${esc(src)} ↔ ${esc(tgt)}</strong>${d.strength} shared field${d.strength > 1 ? 's' : ''}: ${esc(topics)}`;
       tt.classList.add('visible');
       moveTooltip(event);
     })
@@ -704,8 +715,12 @@ function renderNetwork() {
     .stop();
 
   // Compute the layout synchronously — the rAF-driven timer stalls in
-  // background/hidden tabs, leaving the graph unlaid-out. Capped for size.
-  const tickCount = Math.min(250, Math.ceil(
+  // background/hidden tabs, leaving the graph unlaid-out. Capped for size,
+  // and capped harder when the edge set is dense (slider at 1 can mean
+  // thousands of field links) so the UI never freezes for seconds.
+  const edgeCount = filteredLinks.length + filteredGrantLinks.length;
+  const maxTicks = edgeCount > 6000 ? 90 : edgeCount > 2500 ? 150 : 250;
+  const tickCount = Math.min(maxTicks, Math.ceil(
     Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay())));
   for (let i = 0; i < tickCount; i++) simulation.tick();
   ticked();
